@@ -119,7 +119,7 @@ void setup() {
 
   // UART to STM32 (TX only is fine)
   Serial1.begin(115200); // GPIO2 (TX)
-  Serial.println("ram");
+  
 
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) delay(500);
