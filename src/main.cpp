@@ -4,8 +4,8 @@
 #include <FS.h> // SPIFFS
 
 // WiFi credentials
-const char* ssid = "Ramn10";
-const char* password = "enwu2148";
+const char* ssid = "SM-S916";
+const char* password = "superpassword";
 
 ESP8266WebServer server(80);
 
@@ -193,7 +193,8 @@ tr:hover td {
 <h2>STM32 OTA Dashboard</h2>
 
 <input type="file" id="firmware" accept=".bin"><br>
-<button onclick="uploadFirmware()">Show Chunks</button>
+<button onclick="showChunks()">Show Chunks</button>
+<button onclick="uploadFirmware()">Upload Firmware</button>
 <button id="uploadOTA" onclick="uploadOTAFunction()" disabled>Upload OTA</button>
 
 <progress id="progressBar" value="0" max="100"></progress>
@@ -217,12 +218,12 @@ tr:hover td {
 </div>
 
 <script>
-function uploadFirmware() {
-    let file = document.getElementById("firmware").files[0];
+  function showChunks() {
+      let file = document.getElementById("firmware").files[0];
     if(!file){ 
-        alert("Please select a .bin file"); 
-        return; 
-    }
+          alert("Please select a .bin file"); 
+          return; 
+      }
 
     const chunkSize = 1024;
     const baseAddress = 0x08020000;
@@ -250,7 +251,7 @@ function uploadFirmware() {
         `;
 
         document.getElementById("chunkTableBody").appendChild(row);
-    }
+  }
 
     document.getElementById("status").innerHTML =
         `File "${file.name}" selected. Total size: ${file.size} bytes. Preparing chunks...`;
@@ -284,6 +285,38 @@ function uploadFirmware() {
 function uploadOTAFunction() {
     alert("This is a placeholder for OTA upload. STM32 integration not implemented yet.");
 }
+
+function uploadFirmware() {
+    let file = document.getElementById("firmware").files[0];
+    if (!file) {
+        alert("Please select a file first");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("firmware", file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/upload", true);
+
+    xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+            let percent = (e.loaded / e.total) * 100;
+            document.getElementById("progressBar").value = percent;
+            document.getElementById("percentDisplay").innerText = Math.floor(percent) + "%";
+        }
+    };
+
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            document.getElementById("status").innerText = "Upload complete!";
+        } else {
+            document.getElementById("status").innerText = "Upload failed!";
+        }
+    };
+
+    xhr.send(formData);
+}
 </script>
 
 </body>
@@ -294,6 +327,28 @@ function uploadOTAFunction() {
 void handleRoot() {
   server.send(200, "text/html", webpage);
 }
+
+void handleFirmwareUpload() {
+  HTTPUpload& upload = server.upload();
+  
+  if(upload.status == UPLOAD_FILE_START){
+    Serial.printf("Upload Start: %s\n", upload.filename.c_str());
+    // Create a file in SPIFFS
+    File f = SPIFFS.open("/" + upload.filename, "w");
+    f.close();
+  } else if(upload.status == UPLOAD_FILE_WRITE){
+    // Write bytes as they arrive
+    File f = SPIFFS.open("/" + upload.filename, "a");
+    if(f) {
+      f.write(upload.buf, upload.currentSize);
+      f.close();
+    }
+  } else if(upload.status == UPLOAD_FILE_END){
+    Serial.printf("Upload Complete: %s, %u bytes\n", upload.filename.c_str(), upload.totalSize);
+    server.send(200, "text/plain", "Upload complete");
+  }
+}
+
 
 void handleLogo() {
   File f = SPIFFS.open("/OTA_logo.png", "r");
@@ -307,7 +362,7 @@ void handleLogo() {
 
 void setup() {
   Serial.begin(115200);
-  Serial.swap();
+  //Serial.swap(); // Swaps the default RX/TX pins
 
   if(!SPIFFS.begin()){
     Serial.println("SPIFFS Mount Failed!");
@@ -325,6 +380,10 @@ void setup() {
 
   server.on("/", handleRoot);
   server.on("/OTA_logo.png", HTTP_GET, handleLogo);
+  server.on("/upload", HTTP_POST, []() {
+  server.send(200); 
+  }, handleFirmwareUpload);
+
 
   server.begin();
 }
