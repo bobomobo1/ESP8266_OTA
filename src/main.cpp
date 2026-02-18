@@ -3,9 +3,17 @@
 #include <ESP8266WebServer.h>
 #include <FS.h> // SPIFFS
 
+#define MAX_RX_TIMEOUT        3000
+#define TX_STARTING_DELIMITER 
+#define TX_ENDING_DELIMITER
+#define TX_HEADER_SIZE        6 // 2 Bytes(uint16) for packet # and 4 bytes(uint32) for file size
+#define TX_DATA_SIZE          128
+#define TX_CHUNK_SIZE         128
+#define RX_RESPONSE_ACK       0x79
+
 // WiFi credentials
-const char* ssid = "SM-S916";
-const char* password = "superpassword";
+const char* ssid = "28DoonMills";
+const char* password = "Summer@2025";
 
 ESP8266WebServer server(80);
 
@@ -283,7 +291,14 @@ tr:hover td {
 }
 
 function uploadOTAFunction() {
-    alert("This is a placeholder for OTA upload. STM32 integration not implemented yet.");
+    fetch("/startOTA", { method: "POST" })
+    .then(response => response.text())
+    .then(data => {
+        document.getElementById("status").innerText = data;
+    })
+    .catch(err => {
+        document.getElementById("status").innerText = "OTA failed";
+    });
 }
 
 function uploadFirmware() {
@@ -328,6 +343,48 @@ void handleRoot() {
   server.send(200, "text/html", webpage);
 }
 
+void handleStartOTA() {
+  File firmware = SPIFFS.open("/firmware.bin", "r"); // TODO: Needs to be different then a static name  
+  if (!firmware) {
+    server.send(500, "text/plain", "Firmware file not found");
+    return;
+  }
+  uint8_t buffer[TX_CHUNK_SIZE];
+  Serial.println("Starting OTA transfer to STM32...");
+  while (firmware.available()) {
+    size_t len = firmware.read(buffer, TX_CHUNK_SIZE);
+    // Clear RX buffer BEFORE sending
+    while (Serial.available()) {
+      Serial.read();
+    }
+    // Send exactly one chunk
+    Serial.write(buffer, len);
+    Serial.flush();   // Ensure transmission finished
+    // Wait for 1-byte ACK from STM32
+    unsigned long timeout = millis();
+    bool ackReceived = false;
+    while (millis() - timeout < MAX_RX_TIMEOUT) {
+      if (Serial.available()) {
+        uint8_t ack = Serial.read();
+        if (ack == RX_RESPONSE_ACK) {
+          ackReceived = true;
+        }
+        break;
+      }
+    }
+    if (!ackReceived) {
+      firmware.close();
+      server.send(500, "text/plain", "ACK timeout or invalid ACK");
+      return;
+    }
+    // Now safely continue to next chunk
+  }
+
+  firmware.close();
+  server.send(200, "text/plain", "OTA completed successfully");
+}
+
+
 void handleFirmwareUpload() {
   HTTPUpload& upload = server.upload();
   
@@ -362,7 +419,7 @@ void handleLogo() {
 
 void setup() {
   Serial.begin(115200);
-  //Serial.swap(); // Swaps the default RX/TX pins
+  Serial.swap(); // Swaps the default RX/TX pins
 
   if(!SPIFFS.begin()){
     Serial.println("SPIFFS Mount Failed!");
@@ -383,7 +440,7 @@ void setup() {
   server.on("/upload", HTTP_POST, []() {
   server.send(200); 
   }, handleFirmwareUpload);
-
+  server.on("/startOTA", HTTP_POST, handleStartOTA);
 
   server.begin();
 }
