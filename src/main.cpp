@@ -4,11 +4,15 @@
 #include <FS.h> // SPIFFS
 
 #define MAX_RX_TIMEOUT        3000
-#define TX_STARTING_DELIMITER 
-#define TX_ENDING_DELIMITER
-#define TX_HEADER_SIZE        6 // 2 Bytes(uint16) for packet # and 4 bytes(uint32) for file size
+#define TX_START_DELIM_1      0x7E
+#define TX_START_DELIM_2      0x7E
+#define TX_END_DELIM_1        0x7F
+#define TX_END_DELIM_2        0x7F
+#define TX_DELIMITER_SIZE     2
+#define TX_HEADER_SIZE        3 // 2 Bytes(uint16) for packet # and 1 byte(uint8) for packet size
+#define TX_CRC_SIZE           4
 #define TX_DATA_SIZE          128
-#define TX_CHUNK_SIZE         128
+#define TX_CHUNK_SIZE         TX_DELIMITER_SIZE + TX_HEADER_SIZE + TX_DATA_SIZE + TX_CRC_SIZE + TX_DELIMITER_SIZE
 #define RX_RESPONSE_ACK       0x79
 
 // WiFi credentials
@@ -349,16 +353,37 @@ void handleStartOTA() {
     server.send(500, "text/plain", "Firmware file not found");
     return;
   }
-  uint8_t buffer[TX_CHUNK_SIZE];
+  uint8_t buffer[TX_DATA_SIZE];
+  uint16_t packetNumber = 0;
   Serial.println("Starting OTA transfer to STM32...");
   while (firmware.available()) {
-    size_t len = firmware.read(buffer, TX_CHUNK_SIZE);
+    size_t len = firmware.read(buffer, TX_DATA_SIZE);
+    // If last packet is smaller than 128 bytes
+    if (len < TX_DATA_SIZE) {
+        memset(&buffer[len], 0x00, TX_DATA_SIZE - len); // Fill with trailing 0x00
+    }
+    uint32_t crc = 0xffff; // DUMMY code
     // Clear RX buffer BEFORE sending
     while (Serial.available()) {
       Serial.read();
     }
-    // Send exactly one chunk
+    /*
+      Start of packet code
+    */
+    // START delimiter
+    Serial.write(TX_START_DELIM_1);
+    Serial.write(TX_START_DELIM_1);
+    // HEADER
+    Serial.write((uint8_t*)&packetNumber, sizeof(packetNumber));
+    uint8_t dataLen = len;
+    Serial.write(dataLen);
+    // CHUNK
     Serial.write(buffer, len);
+    // CRC
+    Serial.write((uint8_t*)&crc, sizeof(crc));
+    // END delimiter
+    Serial.write(TX_END_DELIM_1);
+    Serial.write(TX_END_DELIM_2);
     Serial.flush();   // Ensure transmission finished
     // Wait for 1-byte ACK from STM32
     unsigned long timeout = millis();
