@@ -372,19 +372,20 @@ void handleStartOTA() {
     */
     // START delimiter
     Serial.write(TX_START_DELIM_1);
-    Serial.write(TX_START_DELIM_1);
+    Serial.write(TX_START_DELIM_2);
     // HEADER
     Serial.write((uint8_t*)&packetNumber, sizeof(packetNumber));
     uint8_t dataLen = len;
     Serial.write(dataLen);
     // CHUNK
-    Serial.write(buffer, len);
+    Serial.write(buffer, TX_DATA_SIZE);
     // CRC
     Serial.write((uint8_t*)&crc, sizeof(crc));
     // END delimiter
     Serial.write(TX_END_DELIM_1);
     Serial.write(TX_END_DELIM_2);
     Serial.flush();   // Ensure transmission finished
+    packetNumber++;
     // Wait for 1-byte ACK from STM32
     unsigned long timeout = millis();
     bool ackReceived = false;
@@ -404,7 +405,7 @@ void handleStartOTA() {
     }
     // Now safely continue to next chunk
   }
-
+  packetNumber = 0;
   firmware.close();
   server.send(200, "text/plain", "OTA completed successfully");
 }
