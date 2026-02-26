@@ -16,8 +16,8 @@
 #define RX_RESPONSE_ACK       0x79
 
 // WiFi credentials
-const char* ssid = "28DoonMills";
-const char* password = "Summer@2025";
+const char* ssid = "SM-S916";
+const char* password = "superpassword";
 
 ESP8266WebServer server(80);
 
@@ -347,6 +347,30 @@ void handleRoot() {
   server.send(200, "text/html", webpage);
 }
 
+uint32_t stm32_crc32(const uint8_t *data, size_t length)
+{
+  uint32_t crc = 0xFFFFFFFF; // Initial val
+  for (size_t i = 0; i < length; i += 4)
+  {
+    // Swap the endianness to little endian
+    uint32_t word =
+          ((uint32_t)data[i])
+        | ((uint32_t)data[i+1] << 8)
+        | ((uint32_t)data[i+2] << 16)
+        | ((uint32_t)data[i+3] << 24);
+    crc ^= word; // XOR word with 0xFFFFFFFF
+    for (uint8_t bit = 0; bit < 32; bit++)
+    {
+      // Check if MSB == 1 
+      if (crc & 0x80000000) 
+        crc = (crc << 1) ^ 0x04C11DB7; // CRC polynomial used by STM32F411RE (Page 67 in the RM0383)
+      else
+        crc <<= 1; // Else shift 1 
+    }
+  }
+  return crc;
+}
+
 void handleStartOTA() {
   File firmware = SPIFFS.open("/firmware.bin", "r"); // TODO: Needs to be different then a static name  
   if (!firmware) {
@@ -362,7 +386,7 @@ void handleStartOTA() {
     if (len < TX_DATA_SIZE) {
         memset(&buffer[len], 0x00, TX_DATA_SIZE - len); // Fill with trailing 0x00
     }
-    uint32_t crc = 0xffff; // DUMMY code
+    uint32_t crc = stm32_crc32(buffer, TX_DATA_SIZE); 
     // Clear RX buffer BEFORE sending
     while (Serial.available()) {
       Serial.read();
