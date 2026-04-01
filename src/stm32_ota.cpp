@@ -9,6 +9,8 @@ void stm32_start_ota() {
     server.send(500, "text/plain", "Firmware file not found");
     return;
   }
+  size_t fileSize = firmware.size();
+  uint8_t totalPackets = fileSize / TX_DATA_SIZE;
   uint8_t buffer[TX_DATA_SIZE];
   uint16_t packetNumber = 0;
   Serial.println("Starting OTA transfer to STM32...");
@@ -32,7 +34,7 @@ void stm32_start_ota() {
     // HEADER
     Serial.write((uint8_t*)&packetNumber, sizeof(packetNumber));
     uint8_t dataLen = len;
-    Serial.write(dataLen);
+    Serial.write(totalPackets);
     // CHUNK
     Serial.write(buffer, TX_DATA_SIZE);
     // CRC
