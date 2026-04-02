@@ -186,6 +186,7 @@ tr:hover td {
 <input type="file" id="firmware" accept=".bin"><br>
 <button onclick="showChunks()">Show Chunks</button>
 <button onclick="uploadFirmware()">Upload Firmware</button>
+<button onclick="loadBootloader()">Load Bootloader</button>
 <button id="uploadOTA" onclick="uploadOTAFunction()" disabled>Upload OTA</button>
 
 <progress id="progressBar" value="0" max="100"></progress>
@@ -281,6 +282,17 @@ function uploadOTAFunction() {
     })
     .catch(err => {
         document.getElementById("status").innerText = "OTA failed";
+    });
+}
+
+function loadBootloader() {
+    fetch("/loadBootloader", { method: "POST" })
+    .then(response => response.text())
+    .then(data => {
+        document.getElementById("status").innerText = data;
+    })
+    .catch(err => {
+        document.getElementById("status").innerText = "Bootloader load failed failed";
     });
 }
 

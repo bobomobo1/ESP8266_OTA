@@ -46,6 +46,7 @@ void ota_server_init(){
   server.send(200); 
   }, handle_firmware_upload);
   server.on("/startOTA", HTTP_POST, stm32_start_ota);
+  server.on("/loadBootloader", HTTP_POST, stm32_load_bootloader);
 
   server.begin();
 }

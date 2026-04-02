@@ -17,11 +17,13 @@
 #define TX_CHUNK_SIZE         TX_DELIMITER_SIZE + TX_HEADER_SIZE + TX_DATA_SIZE + TX_CRC_SIZE + TX_DELIMITER_SIZE
 #define RX_RESPONSE_ACK       0x79
 #define RX_RESPONSE_NACK      0x1F
+#define RX_STOP_SEND_ACK      0x1E
 #define TX_START_OTA_HEX      0xFE
 #define RX_RESPONSE_READY     0x78
 #define MAX_RETRIES           3
 
 void stm32_start_ota();
 bool send_packet_with_retry(uint16_t packetNumber, uint8_t totalPackets, uint8_t *buffer, uint32_t crc);
+void stm32_load_bootloader(void);
 
 #endif

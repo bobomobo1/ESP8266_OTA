@@ -102,9 +102,48 @@ bool send_packet_with_retry(uint16_t packetNumber, uint8_t totalPackets, uint8_t
         }
         else if (resp == RX_RESPONSE_NACK){
           break; // Retry
+        } else if (resp == RX_STOP_SEND_ACK){
+          return false;
         }
       }
     }
   }
   return false;
+}
+
+
+void stm32_load_bootloader(void){
+  extern ESP8266WebServer server;
+  // START delimiter
+  Serial.write(TX_START_DELIM_1);
+  Serial.write(TX_START_DELIM_2);
+  // Send UPDATE INCOMING to stm32
+  Serial.write(TX_START_OTA_HEX);
+  Serial.write(TX_START_OTA_HEX);
+  Serial.write(TX_START_OTA_HEX);
+  Serial.write(TX_START_OTA_HEX);
+  Serial.write(TX_START_OTA_HEX);
+  Serial.write(TX_START_OTA_HEX);
+  Serial.write(TX_START_OTA_HEX);
+  // END delimiter
+  Serial.write(TX_END_DELIM_1);
+  Serial.write(TX_END_DELIM_2);
+  Serial.flush();
+  // Wait for STM32 to ACK bootloader entry
+  unsigned long timeout = millis();
+  bool ready = false;
+  while (millis() - timeout < MAX_RX_TIMEOUT) {
+    if (Serial.available()) {
+      uint8_t resp = Serial.read();
+      if (resp == RX_RESPONSE_READY) { // or RX_BOOTLOADER_ACK if defined
+        ready = true;
+        break;
+      }
+    }
+  }
+  if (ready) {
+    server.send(200, "text/plain", "STM32 bootloader ready");
+  } else {
+    server.send(500, "text/plain", "STM32 failed to enter bootloader");
+  }
 }
