@@ -10,7 +10,7 @@ void stm32_start_ota() {
     return;
   }
   size_t fileSize = firmware.size();
-  uint8_t totalPackets = fileSize / TX_DATA_SIZE;
+  uint16_t totalPackets = fileSize / TX_DATA_SIZE;
   uint8_t buffer[TX_DATA_SIZE];
   uint16_t packetNumber = 0;
   Serial.println("Starting OTA transfer to STM32...");
@@ -58,15 +58,31 @@ void stm32_start_ota() {
     while (Serial.available()) {
       Serial.read();
     }
-    /*
-      Start of packet code
-    */
+    bool success = send_packet_with_retry(packetNumber, totalPackets, buffer, crc);
+    if (!success) {
+      firmware.close();
+      server.send(500, "text/plain", "Packet failed after retries");
+      return;
+    }
+    packetNumber++; 
+    // Now safely continue to next chunk
+  }
+  packetNumber = 0;
+  firmware.close();
+  server.send(200, "text/plain", "OTA completed successfully");
+}
+
+bool send_packet_with_retry(uint16_t packetNumber, uint8_t totalPackets, uint8_t *buffer, uint32_t crc){
+  for (int attempt = 0; attempt < MAX_RETRIES; attempt++){
+    // Clear RX buffer BEFORE sending
+    while (Serial.available()) {
+      Serial.read();
+    }
     // START delimiter
     Serial.write(TX_START_DELIM_1);
     Serial.write(TX_START_DELIM_2);
     // HEADER
     Serial.write((uint8_t*)&packetNumber, sizeof(packetNumber));
-    uint8_t dataLen = len;
     Serial.write(totalPackets);
     // CHUNK
     Serial.write(buffer, TX_DATA_SIZE);
@@ -75,28 +91,24 @@ void stm32_start_ota() {
     // END delimiter
     Serial.write(TX_END_DELIM_1);
     Serial.write(TX_END_DELIM_2);
-    Serial.flush();   // Ensure transmission finished
-    packetNumber++;
-    // Wait for 1-byte ACK from STM32
+    Serial.flush();
+    // Wait for ACK/NACK
     unsigned long timeout = millis();
-    bool ackReceived = false;
-    while (millis() - timeout < MAX_RX_TIMEOUT) {
-      if (Serial.available()) {
-        uint8_t ack = Serial.read();
-        if (ack == RX_RESPONSE_ACK) {
-          ackReceived = true;
+    while (millis() - timeout < MAX_RX_TIMEOUT)
+    {
+      if (Serial.available())
+      {
+        uint8_t resp = Serial.read();
+        if (resp == RX_RESPONSE_ACK)
+        {
+          return true; 
         }
-        break;
+        else if (resp == RX_RESPONSE_NACK)
+        {
+          break; // Retry
+        }
       }
     }
-    if (!ackReceived) {
-      firmware.close();
-      server.send(500, "text/plain", "ACK timeout or invalid ACK");
-      return;
-    }
-    // Now safely continue to next chunk
   }
-  packetNumber = 0;
-  firmware.close();
-  server.send(200, "text/plain", "OTA completed successfully");
+  return false;
 }
