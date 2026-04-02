@@ -86,6 +86,9 @@ bool send_packet_with_retry(uint16_t packetNumber, uint8_t totalPackets, uint8_t
     Serial.write(totalPackets);
     // CHUNK
     Serial.write(buffer, TX_DATA_SIZE);
+    if(packetNumber == 10){
+      crc++; // Just trying to see what happens if we send a bad packet crc
+    }
     // CRC
     Serial.write((uint8_t*)&crc, sizeof(crc));
     // END delimiter
