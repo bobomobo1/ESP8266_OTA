@@ -94,17 +94,13 @@ bool send_packet_with_retry(uint16_t packetNumber, uint8_t totalPackets, uint8_t
     Serial.flush();
     // Wait for ACK/NACK
     unsigned long timeout = millis();
-    while (millis() - timeout < MAX_RX_TIMEOUT)
-    {
-      if (Serial.available())
-      {
+    while (millis() - timeout < MAX_RX_TIMEOUT){
+      if (Serial.available()){
         uint8_t resp = Serial.read();
-        if (resp == RX_RESPONSE_ACK)
-        {
+        if (resp == RX_RESPONSE_ACK){
           return true; 
         }
-        else if (resp == RX_RESPONSE_NACK)
-        {
+        else if (resp == RX_RESPONSE_NACK){
           break; // Retry
         }
       }
