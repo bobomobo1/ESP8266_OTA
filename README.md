@@ -24,11 +24,3 @@ This firmware turns an **ESP8266** into a Wi‑Fi connected OTA uploader for STM
 2. Build and flash the ESP firmware using PlatformIO or Arduino IDE.  
 3. Connect your ESP8266 board to power and let it join your Wi‑Fi network.  
 4. Open the ESP’s IP in a browser to access the OTA upload page and send your `.bin` file destined for the STM32.
-
-### Dependencies
-
-- ESP8266 Arduino Core (for Wi‑Fi/server support)  
-- SPIFFS to store and serve static web assets  
-- Web server routines to handle file uploads
-
-This tool bridges your PC/browser and the STM32 OTA bootloader, enabling convenient wireless firmware delivery using an ESP8266 as a network‑to‑serial OTA gateway.  
