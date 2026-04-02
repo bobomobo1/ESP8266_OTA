@@ -14,6 +14,39 @@ void stm32_start_ota() {
   uint8_t buffer[TX_DATA_SIZE];
   uint16_t packetNumber = 0;
   Serial.println("Starting OTA transfer to STM32...");
+  // First we need to tell the STM we are about to send an update and that we expect a response saying we are in the bootloader
+  // START delimiter
+  Serial.write(TX_START_DELIM_1);
+  Serial.write(TX_START_DELIM_2);
+  // Send UPDATE INCOMING to stm32
+  Serial.write(TX_START_OTA_HEX);
+  Serial.write(TX_START_OTA_HEX);
+  Serial.write(TX_START_OTA_HEX);
+  Serial.write(TX_START_OTA_HEX);
+  Serial.write(TX_START_OTA_HEX);
+  Serial.write(TX_START_OTA_HEX);
+  Serial.write(TX_START_OTA_HEX);
+  // END delimiter
+  Serial.write(TX_END_DELIM_1);
+  Serial.write(TX_END_DELIM_2);
+  Serial.flush();
+  // Wait for STM32 response
+  unsigned long timeout = millis();
+  bool ready = false;
+  while (millis() - timeout < MAX_RX_TIMEOUT) {
+    if (Serial.available()) {
+      uint8_t resp = Serial.read();
+      if (resp == RX_RESPONSE_READY) {
+        ready = true;
+      }
+      break;
+    }
+  }
+  if (!ready) {
+    firmware.close();
+    server.send(500, "text/plain", "STM32 not responding to OTA start");
+    return;
+  }
   while (firmware.available()) {
     size_t len = firmware.read(buffer, TX_DATA_SIZE);
     // If last packet is smaller than 128 bytes

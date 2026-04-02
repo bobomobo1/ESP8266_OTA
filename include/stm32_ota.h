@@ -16,6 +16,8 @@
 #define TX_DATA_SIZE          128
 #define TX_CHUNK_SIZE         TX_DELIMITER_SIZE + TX_HEADER_SIZE + TX_DATA_SIZE + TX_CRC_SIZE + TX_DELIMITER_SIZE
 #define RX_RESPONSE_ACK       0x79
+#define TX_START_OTA_HEX      0xFE
+#define RX_RESPONSE_READY     0x78
 
 void stm32_start_ota();
 
