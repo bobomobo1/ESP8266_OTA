@@ -29,7 +29,6 @@ void stm32_start_ota() {
   // END delimiter
   Serial.write(TX_END_DELIM_1);
   Serial.write(TX_END_DELIM_2);
-  Serial.flush();
   // Wait for STM32 response
   unsigned long timeout = millis();
   bool ready = false;
