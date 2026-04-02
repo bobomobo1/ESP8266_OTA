@@ -2,6 +2,8 @@
 #include "stm32_crc.h"
 #include <FS.h>
 
+uint8_t alreadySentBadPacket = 0;
+
 void stm32_start_ota() {
   extern ESP8266WebServer server;
   File firmware = SPIFFS.open("/firmware.bin", "r"); // TODO: Needs to be different then a static name  
@@ -86,8 +88,12 @@ bool send_packet_with_retry(uint16_t packetNumber, uint8_t totalPackets, uint8_t
     Serial.write(totalPackets);
     // CHUNK
     Serial.write(buffer, TX_DATA_SIZE);
-    if(packetNumber == 10){
+    if(packetNumber == 10 && alreadySentBadPacket){
+      crc--;
+    }
+    if(packetNumber == 10 && !alreadySentBadPacket){
       crc++; // Just trying to see what happens if we send a bad packet crc
+      alreadySentBadPacket = 1;
     }
     // CRC
     Serial.write((uint8_t*)&crc, sizeof(crc));
