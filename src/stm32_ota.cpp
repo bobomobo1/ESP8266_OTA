@@ -4,7 +4,7 @@
 
 void stm32_start_ota() {
   extern ESP8266WebServer server;
-  File firmware = SPIFFS.open("/firmware.bin", "r"); // TODO: Needs to be different then a static name  
+  File firmware = SPIFFS.open("/F411RE_Binaries.bin", "r"); // TODO: Needs to be different then a static name  
   if (!firmware) {
     server.send(500, "text/plain", "Firmware file not found");
     return;
