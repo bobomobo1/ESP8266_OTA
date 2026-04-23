@@ -19,11 +19,13 @@
 #define RX_RESPONSE_NACK      0x1F
 #define RX_STOP_SEND_ACK      0x1E
 #define TX_START_OTA_HEX      0xFE
+#define TX_START_BOOTLOADER_HEX      0xEE
 #define RX_RESPONSE_READY     0x78
 #define MAX_RETRIES           3
 
 void stm32_start_ota();
 bool send_packet_with_retry(uint16_t packetNumber, uint8_t totalPackets, uint8_t *buffer, uint32_t crc);
 void stm32_load_bootloader(void);
+void stm32_load_main(void);
 
 #endif
