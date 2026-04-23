@@ -146,3 +146,39 @@ void stm32_load_bootloader(void){
     server.send(500, "text/plain", "STM32 failed to enter bootloader");
   }
 }
+
+void stm32_load_main(void){
+  extern ESP8266WebServer server;
+  // START delimiter
+  Serial.write(TX_START_DELIM_1);
+  Serial.write(TX_START_DELIM_2);
+  // Send UPDATE INCOMING to stm32
+  Serial.write(TX_START_BOOTLOADER_HEX);
+  Serial.write(TX_START_BOOTLOADER_HEX);
+  Serial.write(TX_START_BOOTLOADER_HEX);
+  Serial.write(TX_START_BOOTLOADER_HEX);
+  Serial.write(TX_START_BOOTLOADER_HEX);
+  Serial.write(TX_START_BOOTLOADER_HEX);
+  Serial.write(TX_START_BOOTLOADER_HEX);
+  // END delimiter
+  Serial.write(TX_END_DELIM_1);
+  Serial.write(TX_END_DELIM_2);
+  Serial.flush();
+  // Wait for STM32 to ACK bootloader entry
+  unsigned long timeout = millis();
+  bool ready = false;
+  while (millis() - timeout < MAX_RX_TIMEOUT) {
+    if (Serial.available()) {
+      uint8_t resp = Serial.read();
+      if (resp == RX_RESPONSE_READY) { // or RX_BOOTLOADER_ACK if defined
+        ready = true;
+        break;
+      }
+    }
+  }
+  if (ready) {
+    server.send(200, "text/plain", "STM32 main ready");
+  } else {
+    server.send(500, "text/plain", "STM32 failed to enter main");
+  }
+}
