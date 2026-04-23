@@ -187,6 +187,7 @@ tr:hover td {
 <button onclick="showChunks()">Show Chunks</button>
 <button onclick="uploadFirmware()">Upload Firmware</button>
 <button onclick="loadBootloader()">Load Bootloader</button>
+<button onclick="loadMain()">Load Main</button>
 <button id="uploadOTA" onclick="uploadOTAFunction()" disabled>Upload OTA</button>
 
 <progress id="progressBar" value="0" max="100"></progress>
@@ -293,6 +294,17 @@ function loadBootloader() {
     })
     .catch(err => {
         document.getElementById("status").innerText = "Bootloader load failed failed";
+    });
+}
+
+function loadMain() {
+    fetch("/loadMain", { method: "POST" })
+    .then(response => response.text())
+    .then(data => {
+        document.getElementById("status").innerText = data;
+    })
+    .catch(err => {
+        document.getElementById("status").innerText = "Main load failed";
     });
 }
 
